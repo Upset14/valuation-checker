@@ -1,751 +1,503 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Valuation_Checker | Modern DCF & Equity Valuation Engine</title>
-  
-  <!-- Inter Font -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  
-  <!-- Tailwind CSS -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Valuation_Checker | Multi-Scenario & Reverse DCF</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- Chart.js for financial charts -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
-  <!-- Tailwind Configuration for Slate & Indigo Financial Terminal theme -->
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
-          },
-          colors: {
-            brand: {
-              50: '#eef2ff',
-              100: '#e0e7ff',
-              400: '#818cf8',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-            },
-            surface: {
-              950: '#090d16',
-              900: '#0f172a',
-              850: '#131d33',
-              800: '#1e293b',
-              700: '#334155',
-            }
-          }
-        }
-      }
-    };
-  </script>
-
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    /* Custom scrollbars and subtle terminal glow styling */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #0f172a;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #334155;
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #475569;
-    }
-    input[type=number]::-webkit-inner-spin-button, 
-    input[type=number]::-webkit-outer-spin-button { 
-      -webkit-appearance: none; 
-      margin: 0; 
-    }
-    input[type=number] {
-      -moz-appearance: textfield;
-    }
+    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type=number] { -moz-appearance: textfield; }
   </style>
 </head>
-
-<body class="bg-surface-950 text-slate-100 font-sans antialiased min-h-screen selection:bg-brand-500 selection:text-white flex flex-col">
-
-  <header class="border-b border-surface-800 bg-surface-900/80 backdrop-blur sticky top-0 z-40">
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased">
+  <!-- Navbar -->
+  <nav class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="h-9 w-9 rounded-lg bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center shadow-lg shadow-brand-500/20">
-          <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-          </svg>
-        </div>
+      <div class="flex items-center gap-2">
+        <span class="text-emerald-400 font-black text-2xl tracking-tight">Valuation<span class="text-white">_Checker</span></span>
+        <span class="text-xs uppercase bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 font-semibold">Scenario + Reverse DCF</span>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="loadPreset('tech')" class="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition">Preset: Tech Growth</button>
+        <button onclick="loadPreset('defensive')" class="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition">Preset: Mature Defensive</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <!-- Top KPI Banner: Side-by-Side Scenarios -->
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <!-- Bear -->
+      <div class="bg-rose-950/20 border border-rose-900/40 rounded-xl p-5 shadow-lg relative flex flex-col justify-between">
         <div>
-          <span class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-brand-400 bg-clip-text text-transparent">
-            Valuation_Checker
-          </span>
-          <span class="hidden sm:inline-block ml-2 text-xs font-mono px-2 py-0.5 rounded bg-brand-500/10 text-brand-400 border border-brand-500/20">DCF v2.4</span>
+          <div class="flex justify-between items-center">
+            <p class="text-xs uppercase tracking-wider text-rose-400 font-bold">Bear Case</p>
+            <span id="bearWeightBadge" class="text-[10px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded font-mono">25% Prob</span>
+          </div>
+          <h2 id="bearFairVal" class="text-3xl font-black text-rose-400 mt-2">$0.00</h2>
+          <p id="bearUpside" class="text-xs font-semibold text-rose-300 mt-1">-0.0% vs price</p>
+        </div>
+        <div class="mt-4 pt-3 border-t border-rose-900/30">
+          <p class="text-[11px] text-slate-400">Market Implied Growth:</p>
+          <p id="bearImplied" class="text-sm font-bold text-rose-300 font-mono mt-0.5">0.0% / yr</p>
         </div>
       </div>
 
-      <!-- Quick Preset Actions & Controls -->
-      <div class="flex items-center space-x-2 sm:space-x-3">
-        <div class="hidden md:flex items-center space-x-2 mr-2">
-          <button id="btnDemoTech" class="text-xs px-3 py-1.5 rounded-lg bg-surface-800 hover:bg-surface-700 text-slate-300 border border-surface-700 transition">
-            🚀 Tech Growth Demo
-          </button>
-          <button id="btnDemoValue" class="text-xs px-3 py-1.5 rounded-lg bg-surface-800 hover:bg-surface-700 text-slate-300 border border-surface-700 transition">
-            🏛️ Mature Dividend Demo
-          </button>
+      <!-- Base -->
+      <div class="bg-blue-950/20 border border-blue-900/40 rounded-xl p-5 shadow-lg relative flex flex-col justify-between">
+        <div>
+          <div class="flex justify-between items-center">
+            <p class="text-xs uppercase tracking-wider text-blue-400 font-bold">Base Case</p>
+            <span id="baseWeightBadge" class="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded font-mono">50% Prob</span>
+          </div>
+          <h2 id="baseFairVal" class="text-3xl font-black text-blue-400 mt-2">$0.00</h2>
+          <p id="baseUpside" class="text-xs font-semibold text-blue-300 mt-1">+0.0% vs price</p>
         </div>
-        <button id="btnCopyReport" class="flex items-center space-x-1.5 text-xs font-medium px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white shadow-md shadow-brand-600/30 transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-          </svg>
-          <span id="copyBtnText">Copy Summary</span>
+        <div class="mt-4 pt-3 border-t border-blue-900/30">
+          <p class="text-[11px] text-slate-400">Market Implied Growth:</p>
+          <p id="baseImplied" class="text-sm font-bold text-blue-300 font-mono mt-0.5">0.0% / yr</p>
+        </div>
+      </div>
+
+      <!-- Bull -->
+      <div class="bg-emerald-950/20 border border-emerald-900/40 rounded-xl p-5 shadow-lg relative flex flex-col justify-between">
+        <div>
+          <div class="flex justify-between items-center">
+            <p class="text-xs uppercase tracking-wider text-emerald-400 font-bold">Bull Case</p>
+            <span id="bullWeightBadge" class="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-mono">25% Prob</span>
+          </div>
+          <h2 id="bullFairVal" class="text-3xl font-black text-emerald-400 mt-2">$0.00</h2>
+          <p id="bullUpside" class="text-xs font-semibold text-emerald-300 mt-1">+0.0% vs price</p>
+        </div>
+        <div class="mt-4 pt-3 border-t border-emerald-900/30">
+          <p class="text-[11px] text-slate-400">Market Implied Growth:</p>
+          <p id="bullImplied" class="text-sm font-bold text-emerald-300 font-mono mt-0.5">0.0% / yr</p>
+        </div>
+      </div>
+
+      <!-- Blended Target -->
+      <div class="bg-slate-900 border border-slate-700/80 rounded-xl p-5 shadow-lg flex flex-col justify-between">
+        <div>
+          <p class="text-xs uppercase tracking-wider text-amber-400 font-bold">Probability-Weighted Target</p>
+          <h2 id="blendedFairVal" class="text-3xl font-black text-amber-400 mt-2">$0.00</h2>
+          <p id="blendedUpside" class="text-xs font-semibold text-slate-300 mt-1">+0.0% upside</p>
+        </div>
+        <div id="blendedVerdict" class="mt-3 px-3 py-1.5 rounded text-center text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700">
+          Calculating...
+        </div>
+      </div>
+    </section>
+
+    <!-- Reverse DCF Analysis Box -->
+    <section class="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <div>
+          <h3 class="text-base font-bold text-white flex items-center gap-2">
+            <span>Market Expectation Check (Reverse DCF)</span>
+            <span class="text-xs px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-normal">What is priced in?</span>
+          </h3>
+          <p class="text-xs text-slate-400 mt-1">
+            This reveals the annual 5-year FCF growth rate the market expects under each scenario's discount rate to justify today's share price.
+          </p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs" id="reverseDcfCards">
+        <!-- Rendered via JS -->
+      </div>
+    </section>
+
+    <!-- Inputs & Config -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <!-- General Financial Inputs -->
+      <div class="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-5">
+        <h3 class="text-base font-bold text-white border-b border-slate-800 pb-3">1. General Financial Inputs</h3>
+        
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Ticker</label>
+              <input type="text" id="ticker" value="MSFT" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white font-medium focus:border-emerald-500 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Current Stock Price ($)</label>
+              <input type="number" id="currentPrice" value="400.0" step="0.5" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white font-medium focus:border-emerald-500 focus:outline-none" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Base Free Cash Flow ($ Millions)</label>
+            <input type="number" id="baseFcf" value="70000" step="500" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white font-medium focus:border-emerald-500 focus:outline-none" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Shares Out. (M)</label>
+              <input type="number" id="sharesOut" value="7430" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white font-medium focus:border-emerald-500 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Net Debt ($ M)</label>
+              <input type="number" id="netDebt" value="-25000" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white font-medium focus:border-emerald-500 focus:outline-none" />
+              <p class="text-[10px] text-slate-500 mt-0.5">(Negative = Net Cash)</p>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="recalculate()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 font-bold text-slate-950 rounded-lg transition shadow-lg shadow-emerald-500/20 text-sm mt-4">
+          Recalculate Scenarios & Reverse DCF
         </button>
       </div>
-    </div>
-  </header>
 
-  <!-- Notification Toast message box (No alert used) -->
-  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-surface-800 border border-brand-500/40 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3">
-    <div class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div>
-    <span id="toastMessage" class="text-sm font-medium">Notification</span>
-  </div>
-
-  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-      
-      <!-- LEFT COLUMN: Model Parameter Inputs (4 cols) -->
-      <section class="lg:col-span-4 space-y-6">
-        <div class="bg-surface-900 border border-surface-800 rounded-2xl p-6 shadow-xl">
-          <div class="flex items-center justify-between border-b border-surface-800 pb-4 mb-5">
-            <h2 class="text-base font-semibold text-white flex items-center space-x-2">
-              <span class="w-2 h-2 rounded-full bg-brand-400"></span>
-              <span>Model Parameters</span>
-            </h2>
-            <button id="btnReset" class="text-xs text-slate-400 hover:text-slate-200 underline">Reset</button>
-          </div>
-
-          <form id="dcfForm" class="space-y-4" onsubmit="event.preventDefault();">
-            
-            <!-- Company & Ticker -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs font-medium text-slate-400 mb-1">Company Name</label>
-                <input id="inputName" type="text" value="Apex Cloud Inc." class="w-full bg-surface-850 border border-surface-700 rounded-lg px-3 py-2 text-sm font-medium text-white focus:outline-none focus:border-brand-500 transition">
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-slate-400 mb-1">Ticker</label>
-                <input id="inputTicker" type="text" value="APEX" class="w-full bg-surface-850 border border-surface-700 rounded-lg px-3 py-2 text-sm font-mono uppercase font-semibold text-brand-400 focus:outline-none focus:border-brand-500 transition">
-              </div>
-            </div>
-
-            <!-- Current Price & Shares Outstanding -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs font-medium text-slate-400 mb-1">Stock Price ($)</label>
-                <input id="inputPrice" type="number" step="0.01" value="142.50" class="w-full bg-surface-850 border border-surface-700 rounded-lg px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-brand-500 transition">
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-slate-400 mb-1">Shares Out. (M)</label>
-                <input id="inputShares" type="number" step="0.1" value="650.0" class="w-full bg-surface-850 border border-surface-700 rounded-lg px-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-brand-500 transition">
-              </div>
-            </div>
-
-            <!-- Base Free Cash Flow & Net Debt -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs font-medium text-slate-400 mb-1">Base FCF ($M)</label>
-                <input id="inputBaseFCF" type="number" step="1" value="4800" class="w-full bg-surface-850 border border-surface-700 rounded-lg px-3 py-2 text-sm font-mono text-emerald-400 focus:outline-none focus:border-brand-500 transition">
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-slate-400 mb-1">Net Debt ($M)</label>
-                <input id="inputNetDebt" type="number" step="1" value="3200" class="w-full bg-surface-850 border border-surface-700 rounded-lg px-3 py-2 text-sm font-mono text-rose-300 focus:outline-none focus:border-brand-500 transition">
-              </div>
-            </div>
-
-            <div class="pt-2 border-t border-surface-800">
-              <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Growth & Rates</span>
-            </div>
-
-            <!-- 5-Year Growth Rate -->
-            <div>
-              <div class="flex justify-between text-xs mb-1">
-                <span class="text-slate-400">5-Yr FCF CAGR</span>
-                <span id="labelGrowthRate" class="font-mono text-brand-400 font-semibold">14.0%</span>
-              </div>
-              <input id="inputGrowthRate" type="range" min="0" max="40" step="0.5" value="14.0" class="w-full accent-brand-500 cursor-pointer">
-            </div>
-
-            <!-- Terminal Growth Rate -->
-            <div>
-              <div class="flex justify-between text-xs mb-1">
-                <span class="text-slate-400">Terminal Growth Rate (g)</span>
-                <span id="labelTerminalGrowth" class="font-mono text-brand-400 font-semibold">2.5%</span>
-              </div>
-              <input id="inputTerminalGrowth" type="range" min="0.5" max="5.0" step="0.1" value="2.5" class="w-full accent-brand-500 cursor-pointer">
-              <span class="text-[11px] text-slate-500">Long-run GDP proxy rate (typically 2.0% - 3.5%)</span>
-            </div>
-
-            <!-- Discount Rate (WACC) -->
-            <div>
-              <div class="flex justify-between text-xs mb-1">
-                <span class="text-slate-400">Discount Rate / WACC</span>
-                <span id="labelWacc" class="font-mono text-brand-400 font-semibold">8.5%</span>
-              </div>
-              <input id="inputWacc" type="range" min="5.0" max="18.0" step="0.25" value="8.5" class="w-full accent-brand-500 cursor-pointer">
-              <span class="text-[11px] text-slate-500">Cost of equity & debt capital combined</span>
-            </div>
-
-          </form>
-        </div>
-
-        <!-- Quick Multiples Benchmark helper card -->
-        <div class="bg-surface-900 border border-surface-800 rounded-2xl p-6 shadow-xl space-y-3">
-          <h3 class="text-sm font-semibold text-slate-200">Implied Multiples Quick Check</h3>
-          <div class="grid grid-cols-2 gap-3 text-xs">
-            <div class="p-3 bg-surface-850 rounded-xl border border-surface-800">
-              <div class="text-slate-400">Current P/FCF</div>
-              <div id="statCurrentPFCF" class="text-base font-mono font-bold text-white mt-1">19.3x</div>
-            </div>
-            <div class="p-3 bg-surface-850 rounded-xl border border-surface-800">
-              <div class="text-slate-400">Intrinsic P/FCF</div>
-              <div id="statIntrinsicPFCF" class="text-base font-mono font-bold text-brand-400 mt-1">21.8x</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- RIGHT COLUMN: Output Dashboard & Analytics (8 cols) -->
-      <section class="lg:col-span-8 space-y-6">
+      <!-- Scenario Assumptions -->
+      <div class="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl space-y-6">
+        <h3 class="text-base font-bold text-white border-b border-slate-800 pb-3">2. Scenario Drivers</h3>
         
-        <!-- Primary Output Hero Card -->
-        <div id="verdictCard" class="relative overflow-hidden bg-gradient-to-br from-surface-900 via-surface-900 to-surface-850 border border-surface-800 rounded-2xl p-6 sm:p-7 shadow-2xl transition-all duration-300">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Bear Card -->
+          <div class="p-4 rounded-lg bg-rose-950/10 border border-rose-900/30 space-y-3">
+            <h4 class="font-bold text-rose-400 text-sm flex items-center justify-between">
+              <span>Bear Case</span>
+              <span class="text-xs text-rose-300">Pessimistic</span>
+            </h4>
             <div>
-              <div class="flex items-center space-x-2">
-                <span id="displayCompany" class="text-lg font-bold text-white">Apex Cloud Inc.</span>
-                <span id="displayTicker" class="text-xs px-2 py-0.5 rounded font-mono font-bold bg-surface-800 text-slate-300">APEX</span>
-              </div>
-              <p class="text-xs text-slate-400 mt-1">Discounted Cash Flow (Gordon Growth Model)</p>
+              <label class="block text-[11px] text-slate-400 mb-1">Probability (%)</label>
+              <input type="number" id="bearProb" value="25" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white" />
             </div>
-
-            <!-- Verdict Badge -->
-            <div id="verdictBadgeContainer">
-              <span id="verdictBadge" class="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
-                Calculating...
-              </span>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Forecast 5-Yr Growth (%)</label>
+              <input type="number" id="bearGrowth" value="5.0" step="0.5" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Terminal Growth (%)</label>
+              <input type="number" id="bearTermG" value="2.0" step="0.2" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Discount Rate / WACC (%)</label>
+              <input type="number" id="bearWacc" value="9.5" step="0.25" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white" />
             </div>
           </div>
 
-          <!-- Main Stat Grid -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-surface-800">
+          <!-- Base Card -->
+          <div class="p-4 rounded-lg bg-blue-950/10 border border-blue-900/30 space-y-3">
+            <h4 class="font-bold text-blue-400 text-sm flex items-center justify-between">
+              <span>Base Case</span>
+              <span class="text-xs text-blue-300">Target Benchmark</span>
+            </h4>
             <div>
-              <div class="text-xs font-medium text-slate-400">Intrinsic Value</div>
-              <div id="statIntrinsicPrice" class="text-2xl sm:text-3xl font-mono font-extrabold text-white mt-1">$0.00</div>
-              <div id="statMarginOfSafety" class="text-xs font-mono font-semibold mt-1 text-slate-400">0% Margin</div>
+              <label class="block text-[11px] text-slate-400 mb-1">Probability (%)</label>
+              <input type="number" id="baseProb" value="50" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white" />
             </div>
             <div>
-              <div class="text-xs font-medium text-slate-400">Current Market Price</div>
-              <div id="statMarketPrice" class="text-2xl sm:text-3xl font-mono font-semibold text-slate-300 mt-1">$0.00</div>
-              <div class="text-xs text-slate-500 mt-1">Traded price</div>
+              <label class="block text-[11px] text-slate-400 mb-1">Forecast 5-Yr Growth (%)</label>
+              <input type="number" id="baseGrowth" value="12.0" step="0.5" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white" />
             </div>
             <div>
-              <div class="text-xs font-medium text-slate-400">Enterprise Value</div>
-              <div id="statEV" class="text-xl sm:text-2xl font-mono font-semibold text-indigo-300 mt-1">$0M</div>
-              <div class="text-xs text-slate-500 mt-1">PV of FCF + TV</div>
+              <label class="block text-[11px] text-slate-400 mb-1">Terminal Growth (%)</label>
+              <input type="number" id="baseTermG" value="2.75" step="0.2" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white" />
             </div>
             <div>
-              <div class="text-xs font-medium text-slate-400">Equity Value</div>
-              <div id="statEquityValue" class="text-xl sm:text-2xl font-mono font-semibold text-indigo-300 mt-1">$0M</div>
-              <div class="text-xs text-slate-500 mt-1">EV - Net Debt</div>
+              <label class="block text-[11px] text-slate-400 mb-1">Discount Rate / WACC (%)</label>
+              <input type="number" id="baseWacc" value="8.5" step="0.25" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white" />
+            </div>
+          </div>
+
+          <!-- Bull Card -->
+          <div class="p-4 rounded-lg bg-emerald-950/10 border border-emerald-900/30 space-y-3">
+            <h4 class="font-bold text-emerald-400 text-sm flex items-center justify-between">
+              <span>Bull Case</span>
+              <span class="text-xs text-emerald-300">Optimistic</span>
+            </h4>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Probability (%)</label>
+              <input type="number" id="bullProb" value="25" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Forecast 5-Yr Growth (%)</label>
+              <input type="number" id="bullGrowth" value="18.0" step="0.5" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Terminal Growth (%)</label>
+              <input type="number" id="bullTermG" value="3.25" step="0.2" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Discount Rate / WACC (%)</label>
+              <input type="number" id="bullWacc" value="8.0" step="0.25" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-white" />
             </div>
           </div>
         </div>
 
-        <div class="bg-surface-900 border border-surface-800 rounded-2xl p-6 shadow-xl space-y-6">
-          <div class="flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-slate-200">5-Year Cash Flow Projection Engine</h3>
-            <span class="text-xs text-slate-400 font-mono">Present Values at WACC</span>
+        <!-- Visual Line Chart -->
+        <div>
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300">5-Year Projected FCF Path ($M)</h4>
           </div>
-
-          <!-- Projection Table -->
-          <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs font-mono">
-              <thead>
-                <tr class="text-slate-400 border-b border-surface-800">
-                  <th class="py-2.5 px-3">Metric</th>
-                  <th class="py-2.5 px-2 text-right">Base</th>
-                  <th class="py-2.5 px-2 text-right">Year 1</th>
-                  <th class="py-2.5 px-2 text-right">Year 2</th>
-                  <th class="py-2.5 px-2 text-right">Year 3</th>
-                  <th class="py-2.5 px-2 text-right">Year 4</th>
-                  <th class="py-2.5 px-2 text-right">Year 5</th>
-                  <th class="py-2.5 px-3 text-right text-brand-400">Terminal</th>
-                </tr>
-              </thead>
-              <tbody id="projectionTableBody" class="divide-y divide-surface-850">
-                <!-- Dynamically populated via JS -->
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Chart.js Visualization Container -->
-          <div class="pt-4 border-t border-surface-800">
-            <div class="h-64 w-full">
-              <canvas id="fcfChart"></canvas>
-            </div>
+          <div class="h-60">
+            <canvas id="scenarioChart"></canvas>
           </div>
         </div>
-
-        <div class="bg-surface-900 border border-surface-800 rounded-2xl p-6 shadow-xl space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h3 class="text-sm font-semibold text-slate-200">5x5 Valuation Sensitivity Matrix</h3>
-              <p class="text-xs text-slate-400">Share price sensitivity across Discount Rates (WACC) vs Terminal Growth Rates</p>
-            </div>
-            <div class="flex items-center space-x-3 text-[11px] font-mono">
-              <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-500/20 border border-emerald-500/60 mr-1.5"></span> > Current</span>
-              <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-sm bg-rose-500/20 border border-rose-500/60 mr-1.5"></span> < Current</span>
-            </div>
-          </div>
-
-          <div class="overflow-x-auto">
-            <div id="sensitivityContainer" class="min-w-[500px]">
-              <!-- Dynamically populated 5x5 grid -->
-            </div>
-          </div>
-        </div>
-
-      </section>
-
-    </div>
+      </div>
+    </section>
   </main>
 
-  <footer class="mt-auto border-t border-surface-800/80 bg-surface-950 py-6 text-center text-xs text-slate-500">
-    <p>Valuation_Checker Financial Engine • For educational & strategic decision support • Based on Discounted Cash Flow valuation principles.</p>
-  </footer>
-
   <script>
-    // State management for DCF inputs
-    const state = {
-      name: 'Apex Cloud Inc.',
-      ticker: 'APEX',
-      price: 142.50,
-      shares: 650.0,
-      baseFCF: 4800,
-      netDebt: 3200,
-      growthRate: 14.0,
-      terminalGrowth: 2.5,
-      wacc: 8.5
-    };
-
     let chartInstance = null;
 
-    // Toast Notification Utility (replaces alerts)
-    function showToast(message) {
-      const toast = document.getElementById('toast');
-      const toastMsg = document.getElementById('toastMessage');
-      toastMsg.innerText = message;
-      toast.classList.remove('translate-y-20', 'opacity-0');
-      toast.classList.add('translate-y-0', 'opacity-100');
-      
-      setTimeout(() => {
-        toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-20', 'opacity-0');
-      }, 3000);
-    }
+    // Standard Forward DCF valuation function
+    function computeDcf(baseFcf, growthPct, termGPct, waccPct, netDebt, shares) {
+      const g = growthPct / 100;
+      const gT = termGPct / 100;
+      const r = waccPct / 100;
 
-    function calculateDCF(params) {
-      const { baseFCF, growthRate, terminalGrowth, wacc, netDebt, shares } = params;
-      const g = growthRate / 100;
-      const tg = terminalGrowth / 100;
-      const r = wacc / 100;
+      let fcfProjections = [];
+      let current = baseFcf;
+      let sumPv = 0;
 
-      // Ensure discount rate is strictly higher than terminal growth rate for Gordon Growth stability
-      const effectiveR = Math.max(r, tg + 0.005);
-
-      const projectedFCFs = [];
-      const presentValues = [];
-      let sumPV = 0;
-      let currentFCF = baseFCF;
-
-      for (let i = 1; i <= 5; i++) {
-        currentFCF = currentFCF * (1 + g);
-        const discountFactor = Math.pow(1 + effectiveR, i);
-        const pv = currentFCF / discountFactor;
-        
-        projectedFCFs.push(currentFCF);
-        presentValues.push(pv);
-        sumPV += pv;
+      for (let y = 1; y <= 5; y++) {
+        current *= (1 + g);
+        fcfProjections.push(current);
+        sumPv += current / Math.pow(1 + r, y);
       }
 
-      // Terminal Value (Gordon Growth Model at Year 5)
-      const terminalYearFCF = projectedFCFs[4] * (1 + tg);
-      const terminalValue = terminalYearFCF / (effectiveR - tg);
-      const pvTerminalValue = terminalValue / Math.pow(1 + effectiveR, 5);
+      const terminalFcf = fcfProjections[4] * (1 + gT);
+      const terminalVal = (r > gT) ? (terminalFcf / (r - gT)) : 0;
+      const pvTerminal = terminalVal / Math.pow(1 + r, 5);
 
-      const enterpriseValue = sumPV + pvTerminalValue;
-      const equityValue = enterpriseValue - netDebt;
-      const intrinsicPerShare = shares > 0 ? (equityValue / shares) : 0;
+      const ev = sumPv + pvTerminal;
+      const equityVal = ev - netDebt;
+      const fairValPerShare = equityVal / shares;
 
       return {
-        projectedFCFs,
-        presentValues,
-        sumPV,
-        terminalValue,
-        pvTerminalValue,
-        enterpriseValue,
-        equityValue,
-        intrinsicPerShare: Math.max(0, intrinsicPerShare)
+        fairValue: Math.max(0, fairValPerShare),
+        projections: fcfProjections
       };
     }
 
-    function updateUI() {
-      const results = calculateDCF(state);
-      
-      // Update Company Headers
-      document.getElementById('displayCompany').innerText = state.name;
-      document.getElementById('displayTicker').innerText = state.ticker;
-      
-      // Update Main Numbers
-      document.getElementById('statIntrinsicPrice').innerText = `$${results.intrinsicPerShare.toFixed(2)}`;
-      document.getElementById('statMarketPrice').innerText = `$${state.price.toFixed(2)}`;
-      document.getElementById('statEV').innerText = `$${(results.enterpriseValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}M`;
-      document.getElementById('statEquityValue').innerText = `$${(results.equityValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}M`;
+    // Reverse DCF Solver: Bisection method to find growth rate where fairValue == currentPrice
+    function solveImpliedGrowth(targetPrice, baseFcf, termGPct, waccPct, netDebt, shares) {
+      if (targetPrice <= 0 || baseFcf <= 0) return null;
 
-      // Calculate Margins & Verdict
-      const diffPct = ((results.intrinsicPerShare - state.price) / state.price) * 100;
-      const marginEl = document.getElementById('statMarginOfSafety');
-      const badge = document.getElementById('verdictBadge');
+      let low = -0.60; // -60% contraction
+      let high = 1.50; // +150% growth
+      let iterations = 40;
+      let tolerance = 0.01;
 
-      if (diffPct > 15) {
-        badge.className = "inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-        badge.innerText = `Undervalued (+${diffPct.toFixed(1)}% Upside)`;
-        marginEl.className = "text-xs font-mono font-semibold mt-1 text-emerald-400";
-        marginEl.innerText = `+${diffPct.toFixed(1)}% Discount to Fair Value`;
-      } else if (diffPct < -15) {
-        badge.className = "inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30";
-        badge.innerText = `Overvalued (${diffPct.toFixed(1)}% Downside)`;
-        marginEl.className = "text-xs font-mono font-semibold mt-1 text-rose-400";
-        marginEl.innerText = `${diffPct.toFixed(1)}% Premium to Fair Value`;
+      for (let i = 0; i < iterations; i++) {
+        let mid = (low + high) / 2;
+        let res = computeDcf(baseFcf, mid * 100, termGPct, waccPct, netDebt, shares);
+        let diff = res.fairValue - targetPrice;
+
+        if (Math.abs(diff) < tolerance) {
+          return mid * 100;
+        }
+
+        if (diff > 0) {
+          high = mid;
+        } else {
+          low = mid;
+        }
+      }
+      return ((low + high) / 2) * 100;
+    }
+
+    function recalculate() {
+      const currentPrice = parseFloat(document.getElementById('currentPrice').value) || 0;
+      const baseFcf = parseFloat(document.getElementById('baseFcf').value) || 0;
+      const shares = parseFloat(document.getElementById('sharesOut').value) || 1;
+      const netDebt = parseFloat(document.getElementById('netDebt').value) || 0;
+
+      // Probabilities
+      let pBear = parseFloat(document.getElementById('bearProb').value) || 0;
+      let pBase = parseFloat(document.getElementById('baseProb').value) || 0;
+      let pBull = parseFloat(document.getElementById('bullProb').value) || 0;
+      const totalP = (pBear + pBase + pBull) || 100;
+      pBear = pBear / totalP;
+      pBase = pBase / totalP;
+      pBull = pBull / totalP;
+
+      document.getElementById('bearWeightBadge').innerText = `${Math.round(pBear * 100)}% Weight`;
+      document.getElementById('baseWeightBadge').innerText = `${Math.round(pBase * 100)}% Weight`;
+      document.getElementById('bullWeightBadge').innerText = `${Math.round(pBull * 100)}% Weight`;
+
+      const bearG = parseFloat(document.getElementById('bearGrowth').value) || 0;
+      const bearTG = parseFloat(document.getElementById('bearTermG').value) || 0;
+      const bearW = parseFloat(document.getElementById('bearWacc').value) || 9;
+
+      const baseG = parseFloat(document.getElementById('baseGrowth').value) || 0;
+      const baseTG = parseFloat(document.getElementById('baseTermG').value) || 0;
+      const baseW = parseFloat(document.getElementById('baseWacc').value) || 8.5;
+
+      const bullG = parseFloat(document.getElementById('bullGrowth').value) || 0;
+      const bullTG = parseFloat(document.getElementById('bullTermG').value) || 0;
+      const bullW = parseFloat(document.getElementById('bullWacc').value) || 8;
+
+      // Forward DCFs
+      const bear = computeDcf(baseFcf, bearG, bearTG, bearW, netDebt, shares);
+      const base = computeDcf(baseFcf, baseG, baseTG, baseW, netDebt, shares);
+      const bull = computeDcf(baseFcf, bullG, bullTG, bullW, netDebt, shares);
+
+      // Reverse DCFs
+      const bearImplied = solveImpliedGrowth(currentPrice, baseFcf, bearTG, bearW, netDebt, shares);
+      const baseImplied = solveImpliedGrowth(currentPrice, baseFcf, baseTG, baseW, netDebt, shares);
+      const bullImplied = solveImpliedGrowth(currentPrice, baseFcf, bullTG, bullW, netDebt, shares);
+
+      // Update Header Cards
+      updateCard('bearFairVal', 'bearUpside', bear.fairValue, currentPrice);
+      updateCard('baseFairVal', 'baseUpside', base.fairValue, currentPrice);
+      updateCard('bullFairVal', 'bullUpside', bull.fairValue, currentPrice);
+
+      document.getElementById('bearImplied').innerText = bearImplied !== null ? `${bearImplied.toFixed(1)}% / yr` : 'N/A';
+      document.getElementById('baseImplied').innerText = baseImplied !== null ? `${baseImplied.toFixed(1)}% / yr` : 'N/A';
+      document.getElementById('bullImplied').innerText = bullImplied !== null ? `${bullImplied.toFixed(1)}% / yr` : 'N/A';
+
+      // Blended Expected Target
+      const blendedFairVal = (bear.fairValue * pBear) + (base.fairValue * pBase) + (bull.fairValue * pBull);
+      document.getElementById('blendedFairVal').innerText = `$${blendedFairVal.toFixed(2)}`;
+      const blendedUpside = currentPrice > 0 ? ((blendedFairVal - currentPrice) / currentPrice) * 100 : 0;
+      const blendedUpEl = document.getElementById('blendedUpside');
+      blendedUpEl.innerText = `${blendedUpside >= 0 ? '+' : ''}${blendedUpside.toFixed(1)}% vs. current price`;
+      blendedUpEl.className = blendedUpside >= 0 ? 'text-xs font-semibold text-emerald-400 mt-1' : 'text-xs font-semibold text-rose-400 mt-1';
+
+      const verdict = document.getElementById('blendedVerdict');
+      if (blendedUpside > 15) {
+        verdict.className = 'mt-3 px-3 py-1.5 rounded text-center text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+        verdict.innerText = 'Underpriced (High Margin of Safety)';
+      } else if (blendedUpside >= -10 && blendedUpside <= 15) {
+        verdict.className = 'mt-3 px-3 py-1.5 rounded text-center text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40';
+        verdict.innerText = 'Fairly Valued';
       } else {
-        badge.className = "inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30";
-        badge.innerText = `Fairly Valued (${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(1)}%)`;
-        marginEl.className = "text-xs font-mono font-semibold mt-1 text-amber-300";
-        marginEl.innerText = `${diffPct >= 0 ? '+' : ''}${diffPct.toFixed(1)}% from Market Price`;
+        verdict.className = 'mt-3 px-3 py-1.5 rounded text-center text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40';
+        verdict.innerText = 'Overvalued (Demands Aggressive Growth)';
       }
 
-      // Quick Multiples Calculation
-      const marketCap = state.price * state.shares;
-      const currentPFCF = state.baseFCF > 0 ? (marketCap / state.baseFCF).toFixed(1) + 'x' : 'N/A';
-      const intrinsicPFCF = state.baseFCF > 0 ? (results.equityValue / state.baseFCF).toFixed(1) + 'x' : 'N/A';
-      document.getElementById('statCurrentPFCF').innerText = currentPFCF;
-      document.getElementById('statIntrinsicPFCF').innerText = intrinsicPFCF;
+      // Render Reverse DCF Comparison Box
+      renderReverseDcfSummary(bearG, bearImplied, baseG, baseImplied, bullG, bullImplied);
 
-      // Update Projection Table
-      renderTable(results);
-
-      // Update Chart
-      renderChart(results);
-
-      // Update 5x5 Sensitivity Matrix
-      renderSensitivityMatrix();
+      renderScenarioChart(bear.projections, base.projections, bull.projections);
     }
 
-    function renderTable(results) {
-      const tbody = document.getElementById('projectionTableBody');
-      const fcfs = results.projectedFCFs;
-      const pvs = results.presentValues;
+    function renderReverseDcfSummary(bearG, bearImp, baseG, baseImp, bullG, bullImp) {
+      const container = document.getElementById('reverseDcfCards');
+      const items = [
+        { label: 'Bear Assumptions', forecast: bearG, implied: bearImp, border: 'border-rose-900/40', bg: 'bg-rose-950/10' },
+        { label: 'Base Assumptions', forecast: baseG, implied: baseImp, border: 'border-blue-900/40', bg: 'bg-blue-950/10' },
+        { label: 'Bull Assumptions', forecast: bullG, implied: bullImp, border: 'border-emerald-900/40', bg: 'bg-emerald-950/10' }
+      ];
 
-      tbody.innerHTML = `
-        <tr class="hover:bg-surface-850/50">
-          <td class="py-2.5 px-3 font-semibold text-slate-300">Projected FCF ($M)</td>
-          <td class="py-2.5 px-2 text-right text-slate-400">$${state.baseFCF.toLocaleString()}</td>
-          <td class="py-2.5 px-2 text-right font-medium text-emerald-400">$${Math.round(fcfs[0]).toLocaleString()}</td>
-          <td class="py-2.5 px-2 text-right font-medium text-emerald-400">$${Math.round(fcfs[1]).toLocaleString()}</td>
-          <td class="py-2.5 px-2 text-right font-medium text-emerald-400">$${Math.round(fcfs[2]).toLocaleString()}</td>
-          <td class="py-2.5 px-2 text-right font-medium text-emerald-400">$${Math.round(fcfs[3]).toLocaleString()}</td>
-          <td class="py-2.5 px-2 text-right font-medium text-emerald-400">$${Math.round(fcfs[4]).toLocaleString()}</td>
-          <td class="py-2.5 px-3 text-right font-semibold text-brand-400">$${Math.round(results.terminalValue).toLocaleString()}</td>
-        </tr>
-        <tr class="hover:bg-surface-850/50">
-          <td class="py-2.5 px-3 font-semibold text-slate-300">Present Value ($M)</td>
-          <td class="py-2.5 px-2 text-right text-slate-400">-</td>
-          <td class="py-2.5 px-2 text-right text-slate-200">$${Math.round(pvs[0]).toLocaleString()}</td>
-          <td class="py-2.5 px-2 text-right text-slate-200">$${Math.round(pvs[1]).toLocaleString()}</td>
-          <td class="py-2.5 px-2 text-right text-slate-200">$${Math.round(pvs[2]).toLocaleString()}</td>
-          <td class="py-2.5 px-2 text-right text-slate-200">$${Math.round(pvs[3]).toLocaleString()}</td>
-          <td class="py-2.5 px-2 text-right text-slate-200">$${Math.round(pvs[4]).toLocaleString()}</td>
-          <td class="py-2.5 px-3 text-right font-semibold text-brand-400">$${Math.round(results.pvTerminalValue).toLocaleString()}</td>
-        </tr>
-      `;
+      container.innerHTML = items.map(it => {
+        const diff = it.forecast - (it.implied || 0);
+        const marginText = diff >= 0 
+          ? `<span class="text-emerald-400 font-semibold">+${diff.toFixed(1)}% buffer (Your forecast beats priced-in hurdle)</span>` 
+          : `<span class="text-rose-400 font-semibold">${diff.toFixed(1)}% deficit (Market expects more than you forecast)</span>`;
+
+        return `
+          <div class="p-3.5 rounded-lg border ${it.border} ${it.bg} space-y-1.5">
+            <div class="font-bold text-slate-200">${it.label}</div>
+            <div class="flex justify-between text-slate-400">
+              <span>Your Forecast:</span>
+              <span class="font-semibold text-white">${it.forecast.toFixed(1)}%</span>
+            </div>
+            <div class="flex justify-between text-slate-400">
+              <span>Market Priced-In:</span>
+              <span class="font-semibold text-amber-300">${it.implied !== null ? it.implied.toFixed(1) + '%' : 'N/A'}</span>
+            </div>
+            <div class="pt-2 border-t border-slate-800 text-[11px]">
+              ${marginText}
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
-    function renderChart(results) {
-      const ctx = document.getElementById('fcfChart').getContext('2d');
-      const labels = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5'];
-      const projectedData = results.projectedFCFs.map(v => Math.round(v));
-      const pvData = results.presentValues.map(v => Math.round(v));
+    function updateCard(valId, upsideId, fairVal, currentPrice) {
+      document.getElementById(valId).innerText = `$${fairVal.toFixed(2)}`;
+      const upside = currentPrice > 0 ? ((fairVal - currentPrice) / currentPrice) * 100 : 0;
+      const el = document.getElementById(upsideId);
+      el.innerText = `${upside >= 0 ? '+' : ''}${upside.toFixed(1)}% vs price`;
+      el.className = upside >= 0 ? 'text-xs font-semibold text-emerald-400 mt-1' : 'text-xs font-semibold text-rose-400 mt-1';
+    }
 
-      if (chartInstance) {
-        chartInstance.destroy();
-      }
+    function renderScenarioChart(bear, base, bull) {
+      const ctx = document.getElementById('scenarioChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
 
       chartInstance = new Chart(ctx, {
-        type: 'bar',
+        type: 'line',
         data: {
-          labels: labels,
+          labels: ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5'],
           datasets: [
             {
-              label: 'Undiscounted Projected FCF ($M)',
-              data: projectedData,
-              backgroundColor: 'rgba(99, 102, 241, 0.4)',
-              borderColor: '#818cf8',
-              borderWidth: 1.5,
-              borderRadius: 6
+              label: 'Bull Case FCF',
+              data: bull.map(v => Math.round(v)),
+              borderColor: 'rgba(52, 211, 153, 1)',
+              backgroundColor: 'rgba(52, 211, 153, 0.08)',
+              tension: 0.3,
+              fill: true
             },
             {
-              label: 'Discounted Present Value ($M)',
-              data: pvData,
-              backgroundColor: 'rgba(16, 185, 129, 0.6)',
-              borderColor: '#34d399',
-              borderWidth: 1.5,
-              borderRadius: 6
+              label: 'Base Case FCF',
+              data: base.map(v => Math.round(v)),
+              borderColor: 'rgba(96, 165, 250, 1)',
+              backgroundColor: 'rgba(96, 165, 250, 0.08)',
+              tension: 0.3,
+              fill: true
+            },
+            {
+              label: 'Bear Case FCF',
+              data: bear.map(v => Math.round(v)),
+              borderColor: 'rgba(251, 113, 133, 1)',
+              backgroundColor: 'rgba(251, 113, 133, 0.08)',
+              tension: 0.3,
+              fill: true
             }
           ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'top',
-              labels: {
-                color: '#94a3b8',
-                font: { family: 'Inter', size: 11 }
-              }
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return ` ${context.dataset.label}: $${context.raw.toLocaleString()}M`;
-                }
-              }
-            }
-          },
+          plugins: { legend: { labels: { color: '#94a3b8' } } },
           scales: {
-            x: {
-              grid: { color: 'rgba(51, 65, 85, 0.3)' },
-              ticks: { color: '#94a3b8', font: { family: 'Inter', size: 11 } }
-            },
-            y: {
-              grid: { color: 'rgba(51, 65, 85, 0.3)' },
-              ticks: { 
-                color: '#94a3b8',
-                font: { family: 'Inter', size: 11 },
-                callback: (value) => `$${value.toLocaleString()}M`
-              }
-            }
+            x: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
+            y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
           }
         }
       });
     }
 
-    function renderSensitivityMatrix() {
-      const container = document.getElementById('sensitivityContainer');
-      const waccDeltas = [-2.0, -1.0, 0, 1.0, 2.0];
-      const tgDeltas = [-1.0, -0.5, 0, 0.5, 1.0];
+    function loadPreset(kind) {
+      if (kind === 'tech') {
+        document.getElementById('ticker').value = 'NVDA';
+        document.getElementById('currentPrice').value = '125.0';
+        document.getElementById('baseFcf').value = '27000';
+        document.getElementById('sharesOut').value = '24500';
+        document.getElementById('netDebt').value = '-15000';
+        
+        document.getElementById('bearGrowth').value = '10.0';
+        document.getElementById('baseGrowth').value = '22.0';
+        document.getElementById('bullGrowth').value = '35.0';
 
-      let tableHTML = `
-        <table class="w-full text-center text-xs font-mono border-collapse">
-          <thead>
-            <tr>
-              <th class="p-2 border border-surface-800 bg-surface-850 text-slate-400 font-sans text-left">WACC \\ Terminal g</th>
-      `;
+        document.getElementById('bearWacc').value = '10.0';
+        document.getElementById('baseWacc').value = '9.0';
+        document.getElementById('bullWacc').value = '8.5';
+      } else {
+        document.getElementById('ticker').value = 'PG';
+        document.getElementById('currentPrice').value = '165.0';
+        document.getElementById('baseFcf').value = '14500';
+        document.getElementById('sharesOut').value = '2360';
+        document.getElementById('netDebt').value = '28000';
+        
+        document.getElementById('bearGrowth').value = '2.0';
+        document.getElementById('baseGrowth').value = '5.0';
+        document.getElementById('bullGrowth').value = '8.0';
 
-      tgDeltas.forEach(td => {
-        const tgVal = (state.terminalGrowth + td).toFixed(1);
-        tableHTML += `<th class="p-2 border border-surface-800 bg-surface-850 text-slate-300 ${td === 0 ? 'text-brand-400 font-bold bg-brand-500/10' : ''}">${tgVal}%</th>`;
-      });
-      tableHTML += `</tr></thead><tbody>`;
-
-      waccDeltas.forEach(wd => {
-        const waccVal = (state.wacc + wd).toFixed(2);
-        tableHTML += `<tr><td class="p-2 border border-surface-800 bg-surface-850 font-sans font-semibold text-slate-300 text-left ${wd === 0 ? 'text-brand-400 font-bold bg-brand-500/10' : ''}">${waccVal}%</td>`;
-
-        tgDeltas.forEach(td => {
-          const testParams = {
-            ...state,
-            wacc: state.wacc + wd,
-            terminalGrowth: state.terminalGrowth + td
-          };
-          const res = calculateDCF(testParams);
-          const priceVal = res.intrinsicPerShare;
-          const isBase = (wd === 0 && td === 0);
-          
-          let colorClass = "text-slate-300";
-          if (priceVal > state.price * 1.1) {
-            colorClass = "bg-emerald-500/10 text-emerald-400 font-semibold";
-          } else if (priceVal < state.price * 0.9) {
-            colorClass = "bg-rose-500/10 text-rose-400 font-semibold";
-          }
-
-          if (isBase) {
-            colorClass += " ring-2 ring-brand-500 font-bold text-brand-300";
-          }
-
-          tableHTML += `<td class="p-2.5 border border-surface-800 ${colorClass}">$${priceVal.toFixed(2)}</td>`;
-        });
-        tableHTML += `</tr>`;
-      });
-
-      tableHTML += `</tbody></table>`;
-      container.innerHTML = tableHTML;
-    }
-
-    function bindEvents() {
-      const inputs = [
-        { id: 'inputName', key: 'name', type: 'text' },
-        { id: 'inputTicker', key: 'ticker', type: 'text' },
-        { id: 'inputPrice', key: 'price', type: 'float' },
-        { id: 'inputShares', key: 'shares', type: 'float' },
-        { id: 'inputBaseFCF', key: 'baseFCF', type: 'float' },
-        { id: 'inputNetDebt', key: 'netDebt', type: 'float' },
-        { id: 'inputGrowthRate', key: 'growthRate', type: 'float', labelId: 'labelGrowthRate', suffix: '%' },
-        { id: 'inputTerminalGrowth', key: 'terminalGrowth', type: 'float', labelId: 'labelTerminalGrowth', suffix: '%' },
-        { id: 'inputWacc', key: 'wacc', type: 'float', labelId: 'labelWacc', suffix: '%' }
-      ];
-
-      inputs.forEach(item => {
-        const el = document.getElementById(item.id);
-        el.addEventListener('input', (e) => {
-          let val = e.target.value;
-          if (item.type === 'float') {
-            val = parseFloat(val) || 0;
-          }
-          state[item.key] = val;
-
-          if (item.labelId) {
-            document.getElementById(item.labelId).innerText = val.toFixed(1) + item.suffix;
-          }
-
-          updateUI();
-        });
-      });
-
-      // Demo: High Growth Tech
-      document.getElementById('btnDemoTech').addEventListener('click', () => {
-        setFormData({
-          name: 'Apex Cloud Inc.',
-          ticker: 'APEX',
-          price: 142.50,
-          shares: 650.0,
-          baseFCF: 4800,
-          netDebt: 3200,
-          growthRate: 14.0,
-          terminalGrowth: 2.5,
-          wacc: 8.5
-        });
-        showToast("Loaded Tech Growth Preset (APEX)");
-      });
-
-      // Demo: Mature Dividend
-      document.getElementById('btnDemoValue').addEventListener('click', () => {
-        setFormData({
-          name: 'Keystone Utilities Corp.',
-          ticker: 'KU',
-          price: 58.20,
-          shares: 420.0,
-          baseFCF: 2900,
-          netDebt: 8500,
-          growthRate: 4.5,
-          terminalGrowth: 2.0,
-          wacc: 6.8
-        });
-        showToast("Loaded Mature Value Preset (KU)");
-      });
-
-      // Reset
-      document.getElementById('btnReset').addEventListener('click', () => {
-        document.getElementById('btnDemoTech').click();
-      });
-
-      // Copy Summary to Clipboard
-      document.getElementById('btnCopyReport').addEventListener('click', () => {
-        const res = calculateDCF(state);
-        const upside = (((res.intrinsicPerShare - state.price) / state.price) * 100).toFixed(1);
-        const report = `=== VALUATION CHECKER SUMMARY ===\n` +
-          `Company: ${state.name} (${state.ticker})\n` +
-          `Current Price: $${state.price.toFixed(2)}\n` +
-          `DCF Intrinsic Fair Value: $${res.intrinsicPerShare.toFixed(2)}\n` +
-          `Upside / Downside: ${upside}%\n` +
-          `Enterprise Value: $${Math.round(resultsEV(res)).toLocaleString()}M\n` +
-          `Discount Rate (WACC): ${state.wacc}%\n` +
-          `5-Year FCF Growth Rate: ${state.growthRate}%\n` +
-          `Terminal Growth Rate: ${state.terminalGrowth}%\n` +
-          `Generated via Valuation_Checker`;
-
-        copyToClipboard(report);
-      });
-    }
-
-    function resultsEV(res) {
-      return res.enterpriseValue;
-    }
-
-    function setFormData(data) {
-      Object.assign(state, data);
-      document.getElementById('inputName').value = state.name;
-      document.getElementById('inputTicker').value = state.ticker;
-      document.getElementById('inputPrice').value = state.price;
-      document.getElementById('inputShares').value = state.shares;
-      document.getElementById('inputBaseFCF').value = state.baseFCF;
-      document.getElementById('inputNetDebt').value = state.netDebt;
-      document.getElementById('inputGrowthRate').value = state.growthRate;
-      document.getElementById('inputTerminalGrowth').value = state.terminalGrowth;
-      document.getElementById('inputWacc').value = state.wacc;
-
-      document.getElementById('labelGrowthRate').innerText = state.growthRate.toFixed(1) + '%';
-      document.getElementById('labelTerminalGrowth').innerText = state.terminalGrowth.toFixed(1) + '%';
-      document.getElementById('labelWacc').innerText = state.wacc.toFixed(1) + '%';
-
-      updateUI();
-    }
-
-    // Safe clipboard execution compatible with embedded sandboxes
-    function copyToClipboard(text) {
-      const textArea = document.createElement("textarea");
-      textArea.value = text;
-      textArea.style.position = "fixed";
-      textArea.style.opacity = "0";
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-      
-      try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-          showToast("Summary copied to clipboard!");
-        } else {
-          showToast("Failed to copy summary.");
-        }
-      } catch (err) {
-        showToast("Copy error: sandbox restricted.");
+        document.getElementById('bearWacc').value = '7.5';
+        document.getElementById('baseWacc').value = '6.8';
+        document.getElementById('bullWacc').value = '6.2';
       }
-      document.body.removeChild(textArea);
+      recalculate();
     }
 
-    window.onload = function() {
-      bindEvents();
-      updateUI();
-    };
+    window.onload = recalculate;
   </script>
 </body>
 </html>
