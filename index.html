@@ -11,6 +11,8 @@
     input[type=number] { -moz-appearance: textfield; }
     .tab-active { border-color: #10b981; color: #10b981; background-color: rgba(16, 185, 129, 0.05); }
     .scenario-active { background-color: #1e293b; border-color: #3b82f6; color: #60a5fa; }
+    th.sortable:hover { cursor: pointer; background-color: rgba(255, 255, 255, 0.05); }
+    .sort-icon { font-size: 0.7em; margin-left: 0.25rem; color: #64748b; }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen antialiased flex flex-col font-sans">
@@ -90,6 +92,12 @@
             <button onclick="clearWatchlist()" class="px-3 py-2 text-xs bg-rose-950/30 hover:bg-rose-900/40 text-rose-300 rounded border border-rose-900/40 transition">Clear All</button>
           </div>
         </div>
+        
+        <!-- Filter Bar -->
+        <div class="mt-4 pt-4 border-t border-slate-800 flex items-center gap-3">
+             <label class="text-xs text-slate-400 font-semibold uppercase tracking-wider">Filter Ticker/Name:</label>
+             <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search..." class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500 w-64" />
+        </div>
       </div>
 
       <!-- Prescreening Table -->
@@ -102,17 +110,17 @@
           <span id="statusIndicator" class="text-xs text-slate-400 font-mono">Ready</span>
         </div>
         <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs border-collapse">
-            <thead class="bg-slate-950/70 text-slate-400 uppercase font-semibold border-b border-slate-800">
+          <table class="w-full text-left text-xs border-collapse" id="screenerTable">
+            <thead class="bg-slate-950/70 text-slate-400 uppercase font-semibold border-b border-slate-800 select-none">
               <tr>
-                <th class="p-3.5">Ticker / Company</th>
-                <th class="p-3.5 text-right">Price</th>
-                <th class="p-3.5 text-right">Price Chg vs LY</th>
-                <th class="p-3.5 text-right">Market Cap</th>
-                <th class="p-3.5 text-right">P/E (TTM)</th>
-                <th class="p-3.5 text-right">P/B</th>
-                <th class="p-3.5 text-right">EPS (TTM)</th>
-                <th class="p-3.5 text-right">FCF Yield</th>
+                <th class="p-3.5 sortable" onclick="sortTable('ticker')">Ticker / Company <span id="sort-ticker" class="sort-icon"></span></th>
+                <th class="p-3.5 text-right sortable" onclick="sortTable('price')">Price <span id="sort-price" class="sort-icon"></span></th>
+                <th class="p-3.5 text-right sortable" onclick="sortTable('chgLY')">Price Chg vs LY <span id="sort-chgLY" class="sort-icon"></span></th>
+                <th class="p-3.5 text-right sortable" onclick="sortTable('marketCap')">Market Cap <span id="sort-marketCap" class="sort-icon"></span></th>
+                <th class="p-3.5 text-right sortable" onclick="sortTable('pe')">P/E (TTM) <span id="sort-pe" class="sort-icon"></span></th>
+                <th class="p-3.5 text-right sortable" onclick="sortTable('pb')">P/B <span id="sort-pb" class="sort-icon"></span></th>
+                <th class="p-3.5 text-right sortable" onclick="sortTable('eps')">EPS (TTM) <span id="sort-eps" class="sort-icon"></span></th>
+                <th class="p-3.5 text-right sortable" onclick="sortTable('fcfYield')">FCF Yield <span id="sort-fcfYield" class="sort-icon"></span></th>
                 <th class="p-3.5 text-center">Quick Signal</th>
                 <th class="p-3.5 text-center">Actions</th>
               </tr>
@@ -285,14 +293,37 @@
       bull: { growth: 15.0, termG: 3.0, wacc: 8.5, exitMult: 18 },
       bear: { growth: 2.0, termG: 1.8, wacc: 10.0, exitMult: 10 }
     };
+    
+    // Sort state
+    let sortColumn = '';
+    let sortAscending = true;
 
     let chartInstance = null;
 
-    // --- API CONNECTION HELPERS ---
+    // --- LOCAL STORAGE HELPERS ---
     function getStoredKey() {
       return localStorage.getItem('vc_api_key') || '';
     }
+    
+    function saveWatchlist() {
+        localStorage.setItem('vc_watchlist', JSON.stringify(watchlistData));
+    }
 
+    function loadWatchlist() {
+        const stored = localStorage.getItem('vc_watchlist');
+        if (stored) {
+            try {
+                watchlistData = JSON.parse(stored);
+                return true;
+            } catch (e) {
+                console.error("Error loading watchlist from local storage", e);
+                return false;
+            }
+        }
+        return false;
+    }
+
+    // --- API CONNECTION HELPERS ---
     function setLiveAlert(msg, isSuccess) {
       const alertBox = document.getElementById('liveStatusAlert');
       const text = document.getElementById('liveStatusMsg');
@@ -443,18 +474,70 @@
         return null;
       }
     }
+    
+    // --- SORTING AND FILTERING ---
+    function sortTable(column) {
+        if (sortColumn === column) {
+            sortAscending = !sortAscending;
+        } else {
+            sortColumn = column;
+            sortAscending = true;
+        }
+
+        // Reset sort icons
+        document.querySelectorAll('.sort-icon').forEach(icon => icon.innerHTML = '');
+        
+        const iconId = `sort-${column}`;
+        const iconEl = document.getElementById(iconId);
+        if(iconEl) {
+            iconEl.innerHTML = sortAscending ? '▲' : '▼';
+        }
+
+        watchlistData.sort((a, b) => {
+            let valA = a[column];
+            let valB = b[column];
+            
+            // Handle N/A or undefined
+            if (valA === undefined || valA === null) valA = -999999;
+            if (valB === undefined || valB === null) valB = -999999;
+            
+            // String comparison for ticker
+            if (column === 'ticker') {
+                return sortAscending ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            }
+            
+            // Numeric comparison
+            return sortAscending ? valA - valB : valB - valA;
+        });
+
+        renderScreenerTable();
+    }
+    
+    function filterTable() {
+        renderScreenerTable();
+    }
 
     // --- SCREENER UI & ACTIONS ---
     function renderScreenerTable() {
       const tbody = document.getElementById('screenerTableBody');
-      document.getElementById('screenerCountBadge').innerText = watchlistData.length;
+      const searchTerm = document.getElementById('searchInput') ? document.getElementById('searchInput').value.toLowerCase() : '';
+      
+      const filteredData = watchlistData.filter(co => 
+          co.ticker.toLowerCase().includes(searchTerm) || 
+          co.name.toLowerCase().includes(searchTerm)
+      );
+      
+      document.getElementById('screenerCountBadge').innerText = filteredData.length;
 
-      if (watchlistData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="p-8 text-center text-slate-500 font-sans">No stocks in watch list. Type tickers above or click "Sample Turnarounds" to populate.</td></tr>`;
+      if (filteredData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="p-8 text-center text-slate-500 font-sans">No stocks match your filter or watch list is empty.</td></tr>`;
         return;
       }
 
-      tbody.innerHTML = watchlistData.map((co, idx) => {
+      tbody.innerHTML = filteredData.map((co, idx) => {
+        // Find original index for actions
+        const originalIdx = watchlistData.findIndex(item => item.ticker === co.ticker);
+          
         let signalClass = 'bg-slate-800 text-slate-400 border-slate-700';
         let signalText = 'Neutral';
 
@@ -486,21 +569,21 @@
               <span class="text-slate-400 text-[11px] block font-normal truncate max-w-[150px]">${co.name}</span>
             </td>
             <td class="p-3.5 text-right font-medium text-white">$${co.price ? co.price.toFixed(2) : '-'}</td>
-            <td class="p-3.5 text-right ${chgClass}">${co.chgLY !== undefined ? `${chgPrefix}${co.chgLY.toFixed(1)}%` : '-'}</td>
+            <td class="p-3.5 text-right ${chgClass}">${co.chgLY !== undefined && co.chgLY !== null ? `${chgPrefix}${co.chgLY.toFixed(1)}%` : '-'}</td>
             <td class="p-3.5 text-right text-slate-300 font-medium">${capDisplay}</td>
-            <td class="p-3.5 text-right text-slate-300">${co.pe ? co.pe.toFixed(1) : '-'}x</td>
-            <td class="p-3.5 text-right text-slate-300">${co.pb ? co.pb.toFixed(1) : '-'}x</td>
-            <td class="p-3.5 text-right text-slate-300">${co.eps !== undefined ? `$${co.eps.toFixed(2)}` : '-'}</td>
-            <td class="p-3.5 text-right font-semibold ${co.fcfYield >= 6 ? 'text-emerald-400' : 'text-slate-300'}">${co.fcfYield ? co.fcfYield.toFixed(1) + '%' : '-'}</td>
+            <td class="p-3.5 text-right text-slate-300">${co.pe && co.pe !== -999999 ? co.pe.toFixed(1) + 'x' : '-'}</td>
+            <td class="p-3.5 text-right text-slate-300">${co.pb && co.pb !== -999999 ? co.pb.toFixed(1) + 'x' : '-'}</td>
+            <td class="p-3.5 text-right text-slate-300">${co.eps !== undefined && co.eps !== -999999 ? `$${co.eps.toFixed(2)}` : '-'}</td>
+            <td class="p-3.5 text-right font-semibold ${co.fcfYield >= 6 ? 'text-emerald-400' : 'text-slate-300'}">${co.fcfYield && co.fcfYield !== -999999 ? co.fcfYield.toFixed(1) + '%' : '-'}</td>
             <td class="p-3.5 text-center">
               <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${signalClass}">${signalText}</span>
             </td>
             <td class="p-3.5 text-center">
               <div class="flex items-center justify-center gap-1.5">
-                <button onclick="loadIntoStudio(${idx})" class="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 font-bold text-[11px] rounded border border-emerald-500/30 transition">
+                <button onclick="loadIntoStudio(${originalIdx})" class="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 font-bold text-[11px] rounded border border-emerald-500/30 transition">
                   Valuate &rarr;
                 </button>
-                <button onclick="removeScreenerItem(${idx})" class="text-slate-600 hover:text-rose-400 px-1 py-1 text-sm font-sans">&times;</button>
+                <button onclick="removeScreenerItem(${originalIdx})" class="text-slate-600 hover:text-rose-400 px-1 py-1 text-sm font-sans">&times;</button>
               </div>
             </td>
           </tr>
@@ -544,6 +627,7 @@
 
       input.value = '';
       addBtn.innerHTML = `<span>+ Fetch & Add</span>`;
+      saveWatchlist();
       renderScreenerTable();
     }
 
@@ -562,16 +646,19 @@
       }
       refreshBtn.innerText = '↻ Refresh Live';
       setLiveAlert('Watchlist refreshed with current market data.', true);
+      saveWatchlist();
       renderScreenerTable();
     }
 
     function removeScreenerItem(idx) {
       watchlistData.splice(idx, 1);
+      saveWatchlist();
       renderScreenerTable();
     }
 
     function clearWatchlist() {
       watchlistData = [];
+      saveWatchlist();
       renderScreenerTable();
     }
 
@@ -590,6 +677,7 @@
           { ticker: 'GOOGL', name: 'Alphabet Inc.', price: 178.0, chgLY: 34.2, marketCap: 2207000, pe: 24.0, pb: 6.2, eps: 7.42, fcfYield: 5.0, fcf: 69000, shares: 12400, netDebt: -80000 }
         ];
       }
+      saveWatchlist();
       renderScreenerTable();
       // If we have a key saved, attempt to upgrade the sample list to live quotes
       if (getStoredKey()) {
@@ -850,7 +938,16 @@
         document.getElementById('apiKeyInput').value = savedKey;
         updateBadgeStatus(true);
       }
-      loadSampleList('turnaround');
+      
+      const loaded = loadWatchlist();
+      if (!loaded || watchlistData.length === 0) {
+          loadSampleList('turnaround');
+      } else {
+          renderScreenerTable();
+          if (savedKey) {
+              refreshWatchlistLive();
+          }
+      }
     };
   </script>
 </body>
